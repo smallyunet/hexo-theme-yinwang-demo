@@ -1,5 +1,7 @@
 # Demo for hexo-theme-yinwang 
 
+Demo for [hexo-theme-yinwang](https://github.com/smallyunet/hexo-theme-yinwang).
+
 ## Usage
 
 ```
