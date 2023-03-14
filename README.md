@@ -3,7 +3,7 @@
 ## Usage
 
 ```
-git clone --recursive -j8 https://github.com/smallyunet/hexo-theme-yinwang-demo.git
+git clone --recurse-submodules -j8 https://github.com/smallyunet/hexo-theme-yinwang-demo.git
 cd hexo-theme-yinwang-demo/
 npm i
 npx hexo serve
