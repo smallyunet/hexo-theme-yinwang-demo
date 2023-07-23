@@ -5,8 +5,7 @@ language: en
 # 导航栏 开头不带斜杠
 menu:
   博客: ''
-  标签: tags
-  分类: categories
+  标签云: tags
   关于: about
 
 # 建议页数大于1开启
