@@ -11,4 +11,4 @@ npm i
 npx hexo serve
 ```
 
-Then you can visit: [http://localhost:4000](http://localhost:4000)
+Then you can visit: [http://localhost:4000/hexo-theme-yinwang-demo/](http://localhost:4000/hexo-theme-yinwang-demo/)
