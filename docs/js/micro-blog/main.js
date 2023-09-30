@@ -94,7 +94,12 @@ var getContent = (year) => {
   };
 
   let reqUrlWithProcess = () => {
-    let url = `/micro-blog/${year}.json`;
+    // 获取当前页面的路径
+    let path = window.location.pathname;
+    // 分割路径，提取除最后一个以外的所有部分
+    let dir = path.split('/').slice(0, -2).join('/');
+    // 拼接基本URL和请求URL
+    let url = `${dir}/micro-blog/${year}.json`;
     $.ajax({
       url: url,
       success: (res) => {
