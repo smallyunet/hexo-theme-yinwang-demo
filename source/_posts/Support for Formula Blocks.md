@@ -1,7 +1,7 @@
 ---
-title: 对公式块的支持
+title: Support for Formula Blocks
 date: 2023-10-05 09:29:43
-tags: 公式块
+tags: Formula Blocks
 mathjax: true
 ---
 

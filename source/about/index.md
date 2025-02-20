@@ -1,6 +1,6 @@
 ---
-title: 关于
+title: About
 date: 2023-03-15 11:18:29
 ---
 
-关于我
+About me

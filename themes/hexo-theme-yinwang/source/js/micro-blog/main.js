@@ -8,47 +8,77 @@ Date.prototype.format = function (fmt) {
     "q+": Math.floor((this.getMonth() + 3) / 3),
     S: this.getMilliseconds(),
   };
+
   if (/(y+)/.test(fmt)) {
+    const yearMatch = fmt.match(/(y+)/);
     fmt = fmt.replace(
-      RegExp.$1,
-      (this.getFullYear() + "").substr(4 - RegExp.$1.length)
+      yearMatch[1],
+      (this.getFullYear() + "").slice(-yearMatch[1].length)
     );
   }
+
   for (var k in o) {
     if (new RegExp("(" + k + ")").test(fmt)) {
+      const match = fmt.match(new RegExp("(" + k + ")"));
       fmt = fmt.replace(
-        RegExp.$1,
-        RegExp.$1.length == 1 ? o[k] : ("00" + o[k]).substr(("" + o[k]).length)
+        match[1],
+        match[1].length === 1 ? o[k] : ("00" + o[k]).slice(-match[1].length)
       );
     }
   }
+
   return fmt;
 };
 
-let defaultYear = "2023";
-var getActive = () => {
-  // Set the active tab based on the route
-  let seg =
-    location.href.split("#").length >= 2
-      ? location.href.split("#")[1]
-      : defaultYear;
-  let seg2 = seg.split("-").length >= 2 ? seg.split("-")[0] : defaultYear;
-  let ele = $(`.nav.nav-tabs a[href=#${seg2}]`).parent();
+let defaultYear = new Date().getFullYear().toString();
+
+function getActive(seg) {
+  let seg2 = seg.split("-")[0] || defaultYear;
+  let ele = $(`.nav.nav-tabs a[href="#${seg2}"]`).parent();
+
+  $(".nav.nav-tabs li").removeClass("active");
+  $(".tab-content .tab-pane").removeClass("active");
+  $(".nav.nav-tabs li a").attr("aria-expanded", "false");
+
   ele.addClass("active");
+  ele.find("a").attr("aria-expanded", "true");
   let ele2 = $(`.tab-content #${seg2}`);
   ele2.addClass("active");
+
+  getContent(seg2);
+}
+
+let smoothScrollTo = (elementId) => {
+  const element = document.getElementById(elementId);
+  if (element) {
+    const yOffset = -20;
+    const yPosition = element.getBoundingClientRect().top + window.pageYOffset + yOffset;
+    window.scrollTo({
+      top: yPosition,
+      behavior: "smooth",
+    });
+  }
 };
 
-let clickUrl = () => {
-  let seg =
-    location.href.split("#").length >= 2
-      ? location.href.split("#")[1]
-      : defaultYear;
-  let arr = seg.split("-");
-  if (arr.length < 2) {
-    return;
+let scrollToHash = () => {
+  let seg = location.href.split("#")[1];
+  if (!seg) return;
+  let [year, id] = seg.split("-");
+  if (id) {
+    const scrollToElement = () => {
+      const targetElement = document.getElementById(`${year}-${id}`);
+      if (targetElement) {
+        smoothScrollTo(`${year}-${id}`);
+        targetElement.classList.add("highlight");
+        setTimeout(() => {
+          targetElement.classList.remove("highlight");
+        }, 1500);
+      } else {
+        requestAnimationFrame(scrollToElement);
+      }
+    };
+    scrollToElement();
   }
-  document.location.href = `#${arr[0]}-${arr[1]}`;
 };
 
 var getContent = (year) => {
@@ -63,26 +93,21 @@ var getContent = (year) => {
     `);
 
   let process = (res) => {
-    ul.html(``);
-    // order by time
+    ul.empty();
     res.sort((a, b) => {
       return a.created_at >= b.created_at ? -1 : 1;
     });
-    let id = res.length;
-    res.map((i) => {
+    res.forEach((i, index) => {
       let date = new Date(i.created_at).format("yyyy年MM月dd日 hh时mm分");
-      let item = `<li class="list-group-item">`;
-      item += `<div class="date">${date}`;
-      item += `<a href="#${year}-${id}" name=${year}-${id}>#${id}</a>`;
-      item += `</div>`;
-      let body = i.body ? i.body : ""; // make sure body not empty
-      item += `<div class="content" style="margin-top:5px;">${marked(
-        body
-      )}</div>`; 
-      item += `</li>`;
+      let id = res.length - index;
+      let item = `<li class="list-group-item" id="${year}-${id}">
+        <div class="date">${date}<a href="#${year}-${id}" name=${year}-${id}>#${id}</a></div>
+        <div class="content" style="margin-top:5px;">${marked(i.body || "")}</div>
+      </li>`;
       ul.append(item);
-      id -= 1;
     });
+
+    scrollToHash();
   };
 
   let processError = (jqXHR, textStatus, errorThrown) => {
@@ -96,41 +121,82 @@ var getContent = (year) => {
   };
 
   let reqUrlWithProcess = () => {
-     // Get the current page's path
-    let path = window.location.pathname;
-    // Split the path and extract all parts except the last one
-    let dir = path.split("/").slice(0, -2).join("/");
-    // Concatenate the base URL with the request URL
-    let url = `${dir}/micro-blog/${year}.json`;
+    let cacheKey = `micro-blog-${year}`;
+    let cached = localStorage.getItem(cacheKey);
+    let cacheDateKey = `${cacheKey}-date`;
+    let cacheDate = localStorage.getItem(cacheDateKey);
+
+    if (cached && cacheDate && new Date().getTime() - new Date(cacheDate).getTime() < 24 * 60 * 60 * 1000) {
+      process(JSON.parse(cached));
+    }
+
+    let path = window.location.pathname.split("/").slice(0, -2).join("/");
+    let url = `${path}/micro-blog/${year}.json`;
     $.ajax({
       url: url,
       success: (res) => {
         process(res);
-        localStorage.setItem(`micro-blog-${year}`, JSON.stringify(res));
+        localStorage.setItem(cacheKey, JSON.stringify(res));
+        localStorage.setItem(cacheDateKey, new Date().toISOString());
       },
       error: (jqXHR, textStatus, errorThrown) => {
-        let res = localStorage.getItem(`micro-blog-${year}`);
-        if (res == null) {
+        if (!cached) {
           processError(jqXHR, textStatus, errorThrown);
         }
       },
     });
   };
 
-  // pre load page content first
   let res = localStorage.getItem(`micro-blog-${year}`);
   if (res) {
     process(JSON.parse(res));
   }
-  // then send request
   reqUrlWithProcess();
 };
 
 $(() => {
-  getActive();
+  let seg = location.href.split("#")[1] || defaultYear;
+  getActive(seg);
+
   $('div[id^="20"]').each(function () {
-    let year = this.id; 
-    getContent(year);
+    let year = this.id;
+    let observer = new IntersectionObserver(
+      (entries, observer) => {
+        entries.forEach(entry => {
+          if (entry.isIntersecting) {
+            getContent(year);
+            observer.unobserve(entry.target);
+          }
+        });
+      },
+      { threshold: 0.1 }
+    );
+    observer.observe(this);
   });
-  clickUrl();
+
+  scrollToHash();
+
+  $(document).on('click', '.nav-tabs a, .tab-content a', function (event) {
+    let href = $(this).attr('href');
+    if (href && href.startsWith("#")) {
+      event.preventDefault(); // Prevent the default anchor behavior
+      let seg = href.substring(1); // Remove the '#' from the start
+      let [year, id] = seg.split("-");
+
+      getActive(year);  // Update the active tab
+
+      if (id) {
+        smoothScrollTo(`${year}-${id}`);
+        const targetElement = document.getElementById(`${year}-${id}`);
+        if (targetElement) {
+          targetElement.classList.add("highlight");
+          setTimeout(() => {
+            targetElement.classList.remove("highlight");
+          }, 1500);
+        }
+
+        history.pushState(null, null, href);
+      }
+    }
+  });
 });
